@@ -74,3 +74,78 @@ func TestNone(t *testing.T) {
 		do(tt)
 	}
 }
+
+func TestOption_String(t *testing.T) {
+	type test struct {
+		name   string
+		option Option[int]
+		want   string
+	}
+
+	do := func(tt *test) {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.option.String()
+			if tt.want != got {
+				t.Fatalf("want=%v, got=%v.", tt.want, got)
+			}
+		})
+	}
+
+	tests := []*test{
+		{
+			name:   "Some",
+			option: Some(10),
+			want:   "Some(10)",
+		},
+		{
+			name:   "None",
+			option: None[int](),
+			want:   "None",
+		},
+	}
+
+	for _, tt := range tests {
+		do(tt)
+	}
+}
+
+func TestOption_MarshalJSON(t *testing.T) {
+	type test struct {
+		name    string
+		option  Option[int]
+		want    []byte
+		wantErr bool
+	}
+
+	do := func(tt *test) {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.option.MarshalJSON()
+			if tt.wantErr != (err != nil) {
+				t.Fatalf("want-error=%v, error=%v.", tt.wantErr, err)
+			}
+
+			if !reflect.DeepEqual(tt.want, got) {
+				t.Fatalf("want=%s, got=%s.", tt.want, got)
+			}
+		})
+	}
+
+	tests := []*test{
+		{
+			name:    "Some",
+			option:  Some(10),
+			want:    []byte("10"),
+			wantErr: false,
+		},
+		{
+			name:    "None",
+			option:  None[int](),
+			want:    []byte("null"),
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		do(tt)
+	}
+}
