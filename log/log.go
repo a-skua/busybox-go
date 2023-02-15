@@ -2,10 +2,10 @@
 package log
 
 import (
-	"encoding/json"
+	"fmt"
 	"github.com/a-skua/busybox/option"
-	"io"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -74,6 +74,10 @@ func NewPriority(f Facility, s Severity) Priority {
 	}
 }
 
+func (pri Priority) String() string {
+	return fmt.Sprintf("<%d>", pri.Num())
+}
+
 func (pri Priority) Num() uint8 {
 	return uint8(pri.Facility)*8 + uint8(pri.Severity)
 }
@@ -87,7 +91,7 @@ func TimeNow() Timestamp {
 }
 
 func (t Timestamp) String() string {
-	return time.Time(t).String()
+	return time.Time(t).Format(time.RFC3339Nano)
 }
 
 func (t Timestamp) MarshalJSON() ([]byte, error) {
@@ -96,11 +100,34 @@ func (t Timestamp) MarshalJSON() ([]byte, error) {
 
 type HostName string
 
+func (host HostName) String() string {
+	return string(host)
+}
+
 type AppName string
+
+func (app AppName) String() string {
+	return string(app)
+}
 
 type ProcessID string
 
+func (proc ProcessID) String() string {
+	return string(proc)
+}
+
 type MessageID string
+
+func (msg MessageID) String() string {
+	return string(msg)
+}
+
+func optionToString[T fmt.Stringer](v option.Option[T]) string {
+	if v.Valid {
+		return v.Value.String()
+	}
+	return "-"
+}
 
 type Header struct {
 	Priority  Priority
@@ -124,6 +151,19 @@ func NewHeader(pri Priority, ver Version, time option.Option[Timestamp], host op
 	}
 }
 
+func (h Header) String() string {
+	return fmt.Sprintf(
+		"%s%d %s %s %s %s %s",
+		h.Priority,
+		h.Version,
+		optionToString(h.Timestamp),
+		optionToString(h.HostName),
+		optionToString(h.AppName),
+		optionToString(h.ProcessID),
+		optionToString(h.MessageID),
+	)
+}
+
 type MetadataID string
 
 type MetadataName string
@@ -135,18 +175,72 @@ type MetadataParam struct {
 	Value MetadataValue
 }
 
+func NewMetadataParam(name MetadataName, value MetadataValue) MetadataParam {
+	return MetadataParam{
+		Name:  name,
+		Value: value,
+	}
+}
+
+func (param MetadataParam) String() string {
+	return fmt.Sprintf(
+		"%s=\"%s\"",
+		param.Name,
+		strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(string(param.Value), "\\", "\\\\"), "\"", "\\\""), "]", "\\]"),
+	)
+}
+
 type Metadata struct {
 	ID     MetadataID
 	Params []MetadataParam
 }
 
+func NewMetadata(id MetadataID, params ...MetadataParam) Metadata {
+	return Metadata{
+		ID:     id,
+		Params: params,
+	}
+}
+
+func (meta Metadata) String() string {
+	params := ""
+	for _, param := range meta.Params {
+		params += fmt.Sprintf(" %s", param)
+	}
+
+	return fmt.Sprintf("[%s%s]", meta.ID, params)
+}
+
 type Message struct {
 	Header   Header
-	Metadata option.Option[Metadata]
+	Metadata []Metadata
 	Message  []any
 }
 
-func NewMessage(head Header, meta option.Option[Metadata], msg []any) *Message {
+func (msg *Message) String() string {
+	message := ""
+	for _, msg := range msg.Message {
+		message += fmt.Sprintf(" %s", msg)
+	}
+
+	metadata := ""
+	if len(msg.Metadata) > 0 {
+		for _, meta := range msg.Metadata {
+			metadata += meta.String()
+		}
+	} else {
+		metadata = "-"
+	}
+
+	return fmt.Sprintf(
+		"%s %s%s",
+		msg.Header,
+		metadata,
+		message,
+	)
+}
+
+func NewMessage(head Header, meta []Metadata, msg ...any) *Message {
 	return &Message{
 		Header:   head,
 		Metadata: meta,
@@ -154,14 +248,19 @@ func NewMessage(head Header, meta option.Option[Metadata], msg []any) *Message {
 	}
 }
 
-type Formatter interface {
-	Format(*Message) ([]byte, error)
+type Writer interface {
+	Write(*Message) error
 }
 
-type JsonFormatter struct{}
+type stdWriter struct{}
 
-func (fmt JsonFormatter) Format(msg *Message) ([]byte, error) {
-	return json.Marshal(msg)
+func (w stdWriter) Write(msg *Message) error {
+	_, err := fmt.Fprintln(os.Stdout, msg)
+	return err
+}
+
+func NewStderrWriter() Writer {
+	return stdWriter{}
 }
 
 type Log struct {
@@ -170,9 +269,8 @@ type Log struct {
 	AppName  option.Option[AppName]
 	HostName option.Option[HostName]
 	Proccess option.Option[ProcessID]
-	Metadata option.Option[Metadata]
-	Fmt      Formatter
-	Output   io.Writer
+	Metadata []Metadata
+	Writer   Writer
 }
 
 func NewDefaultLogger(app option.Option[AppName], host option.Option[HostName], proc option.Option[ProcessID]) Logger {
@@ -182,13 +280,13 @@ func NewDefaultLogger(app option.Option[AppName], host option.Option[HostName], 
 		AppName:  app,
 		HostName: host,
 		Proccess: proc,
-		Fmt:      JsonFormatter{},
-		Output:   os.Stderr,
+		Metadata: []Metadata{},
+		Writer:   stdWriter{},
 	}
 }
 
 func (log *Log) write(severity Severity, msg []any) error {
-	bin, err := log.Fmt.Format(NewMessage(
+	return log.Writer.Write(NewMessage(
 		NewHeader(
 			NewPriority(log.Facility, severity),
 			log.Version,
@@ -199,17 +297,8 @@ func (log *Log) write(severity Severity, msg []any) error {
 			option.None[MessageID](),
 		),
 		log.Metadata,
-		msg,
+		msg...,
 	))
-	if err != nil {
-		return err
-	}
-
-	// FIXME
-	log.Output.Write(bin)
-	log.Output.Write([]byte("\n"))
-
-	return nil
 }
 
 func (log *Log) Emergency(msg ...any) error {
