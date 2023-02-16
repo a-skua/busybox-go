@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/a-skua/busybox/option"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -75,7 +76,7 @@ func NewPriority(f Facility, s Severity) Priority {
 }
 
 func (pri Priority) String() string {
-	return fmt.Sprintf("<%d>", pri.Num())
+	return "<" + strconv.Itoa(int(pri.Num())) + ">"
 }
 
 func (pri Priority) Num() uint8 {
@@ -86,7 +87,7 @@ type Version uint8
 
 type Timestamp time.Time
 
-func TimeNow() Timestamp {
+func TimestampNow() Timestamp {
 	return Timestamp(time.Now())
 }
 
@@ -133,8 +134,8 @@ type Header struct {
 	Priority  Priority
 	Version   Version
 	Timestamp option.Option[Timestamp]
-	HostName  option.Option[HostName]
-	AppName   option.Option[AppName]
+	Host      option.Option[HostName]
+	App       option.Option[AppName]
 	ProcessID option.Option[ProcessID]
 	MessageID option.Option[MessageID]
 }
@@ -144,31 +145,45 @@ func NewHeader(pri Priority, ver Version, time option.Option[Timestamp], host op
 		Priority:  pri,
 		Version:   ver,
 		Timestamp: time,
-		HostName:  host,
-		AppName:   app,
+		Host:      host,
+		App:       app,
 		ProcessID: proc,
 		MessageID: msg,
 	}
 }
 
 func (h Header) String() string {
-	return fmt.Sprintf(
-		"%s%d %s %s %s %s %s",
-		h.Priority,
-		h.Version,
-		optionToString(h.Timestamp),
-		optionToString(h.HostName),
-		optionToString(h.AppName),
-		optionToString(h.ProcessID),
-		optionToString(h.MessageID),
-	)
+	return h.Priority.String() +
+		strconv.Itoa(int(h.Version)) +
+		" " +
+		optionToString(h.Timestamp) +
+		" " +
+		optionToString(h.Host) +
+		" " +
+		optionToString(h.App) +
+		" " +
+		optionToString(h.ProcessID) +
+		" " +
+		optionToString(h.MessageID)
 }
 
 type MetadataID string
 
+func (id MetadataID) String() string {
+	return string(id)
+}
+
 type MetadataName string
 
+func (name MetadataName) String() string {
+	return string(name)
+}
+
 type MetadataValue string
+
+func (value MetadataValue) String() string {
+	return string(value)
+}
 
 type MetadataParam struct {
 	Name  MetadataName
@@ -183,11 +198,10 @@ func NewMetadataParam(name MetadataName, value MetadataValue) MetadataParam {
 }
 
 func (param MetadataParam) String() string {
-	return fmt.Sprintf(
-		"%s=\"%s\"",
-		param.Name,
-		strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(string(param.Value), "\\", "\\\\"), "\"", "\\\""), "]", "\\]"),
-	)
+	return param.Name.String() +
+		"=\"" +
+		strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(param.Value.String(), "\\", "\\\\"), "\"", "\\\""), "]", "\\]") +
+		"\""
 }
 
 type Metadata struct {
@@ -205,10 +219,10 @@ func NewMetadata(id MetadataID, params ...MetadataParam) Metadata {
 func (meta Metadata) String() string {
 	params := ""
 	for _, param := range meta.Params {
-		params += fmt.Sprintf(" %s", param)
+		params += " " + param.String()
 	}
 
-	return fmt.Sprintf("[%s%s]", meta.ID, params)
+	return "[" + meta.ID.String() + params + "]"
 }
 
 type Message struct {
@@ -220,7 +234,7 @@ type Message struct {
 func (msg *Message) String() string {
 	message := ""
 	for _, msg := range msg.Message {
-		message += fmt.Sprintf(" %s", msg)
+		message += " " + fmt.Sprint(msg)
 	}
 
 	metadata := ""
@@ -232,12 +246,10 @@ func (msg *Message) String() string {
 		metadata = "-"
 	}
 
-	return fmt.Sprintf(
-		"%s %s%s",
-		msg.Header,
-		metadata,
-		message,
-	)
+	return msg.Header.String() +
+		" " +
+		metadata +
+		message
 }
 
 func NewMessage(head Header, meta []Metadata, msg ...any) *Message {
@@ -290,7 +302,7 @@ func (log *Log) write(severity Severity, msg []any) error {
 		NewHeader(
 			NewPriority(log.Facility, severity),
 			log.Version,
-			option.Some(TimeNow()),
+			option.Some(TimestampNow()),
 			log.HostName,
 			log.AppName,
 			log.Proccess,

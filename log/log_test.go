@@ -509,6 +509,143 @@ func TestMetadata_String(t *testing.T) {
 	}
 }
 
+func TestMessage_String(t *testing.T) {
+	type test struct {
+		name    string
+		message *Message
+		want    string
+	}
+
+	do := func(tt *test) {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.message.String()
+			if tt.want != got {
+				t.Fatalf("want=%v, got=%v.", tt.want, got)
+			}
+		})
+	}
+
+	tests := []*test{
+		{
+			name: "empty message",
+			message: NewMessage(
+				NewHeader(
+					NewPriority(FacilityLocalUse4, SeverityNotice),
+					1,
+					option.None[Timestamp](),
+					option.None[HostName](),
+					option.None[AppName](),
+					option.None[ProcessID](),
+					option.None[MessageID](),
+				),
+				[]Metadata{},
+			),
+			want: "<165>1 - - - - - -",
+		},
+		{
+			name: "with message",
+			message: NewMessage(
+				NewHeader(
+					NewPriority(FacilityLocalUse4, SeverityNotice),
+					1,
+					option.None[Timestamp](),
+					option.None[HostName](),
+					option.None[AppName](),
+					option.None[ProcessID](),
+					option.None[MessageID](),
+				),
+				[]Metadata{},
+				"foo",
+				"bar",
+				"baz",
+			),
+			want: "<165>1 - - - - - - foo bar baz",
+		},
+		{
+			name: "with info",
+			message: NewMessage(
+				NewHeader(
+					NewPriority(FacilityLocalUse4, SeverityNotice),
+					1,
+					option.Some(Timestamp(time.Date(2023, 02, 16, 12, 34, 56, 0, time.UTC))),
+					option.Some(HostName("localhost")),
+					option.Some(AppName("busybox")),
+					option.None[ProcessID](),
+					option.None[MessageID](),
+				),
+				[]Metadata{},
+				"hello, syslog!",
+			),
+			want: "<165>1 2023-02-16T12:34:56Z localhost busybox - - - hello, syslog!",
+		},
+		{
+			name: "with metadata",
+			message: NewMessage(
+				NewHeader(
+					NewPriority(FacilityLocalUse4, SeverityNotice),
+					1,
+					option.Some(Timestamp(time.Date(2023, 02, 16, 12, 34, 56, 0, time.UTC))),
+					option.Some(HostName("localhost")),
+					option.Some(AppName("busybox")),
+					option.None[ProcessID](),
+					option.None[MessageID](),
+				),
+				[]Metadata{
+					NewMetadata("exampleSDID@0"),
+				},
+				"hello, syslog!",
+			),
+			want: "<165>1 2023-02-16T12:34:56Z localhost busybox - - [exampleSDID@0] hello, syslog!",
+		},
+		{
+			name: "with metadata",
+			message: NewMessage(
+				NewHeader(
+					NewPriority(FacilityLocalUse4, SeverityNotice),
+					1,
+					option.Some(Timestamp(time.Date(2023, 02, 16, 12, 34, 56, 0, time.UTC))),
+					option.Some(HostName("localhost")),
+					option.Some(AppName("busybox")),
+					option.None[ProcessID](),
+					option.None[MessageID](),
+				),
+				[]Metadata{
+					NewMetadata("exampleSDID@0"),
+					NewMetadata("exampleSDID@1", NewMetadataParam("eventID", "1011"), NewMetadataParam("eventSource", "Application")),
+				},
+				"hello, syslog!",
+			),
+			want: "<165>1 2023-02-16T12:34:56Z localhost busybox - - [exampleSDID@0][exampleSDID@1 eventID=\"1011\" eventSource=\"Application\"] hello, syslog!",
+		},
+	}
+
+	for _, tt := range tests {
+		do(tt)
+	}
+}
+
+func BenchmarkMessage_String(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.Log(NewMessage(
+			NewHeader(
+				NewPriority(FacilityUserLevelMessages, SeverityInformational),
+				1,
+				option.Some(TimestampNow()),
+				option.Some(HostName("localhost")),
+				option.Some(AppName("benchmark")),
+				option.None[ProcessID](),
+				option.None[MessageID](),
+			),
+			[]Metadata{
+				NewMetadata("benchmark@1"),
+				NewMetadata("benchmark@2", NewMetadataParam("foo", "FOO"), NewMetadataParam("bar", "[BAR]")),
+			},
+			"Syslog!",
+			"Benchmark!",
+		))
+	}
+}
+
 func Example_stderrWriter_Write() {
 	w := NewStderrWriter()
 	w.Write(NewMessage(
