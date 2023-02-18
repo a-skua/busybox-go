@@ -6,3 +6,6 @@ test:
 
 bench:
 	go test . -bench Message
+
+example:
+	go run ./_example/main.go

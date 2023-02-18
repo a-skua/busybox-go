@@ -17,7 +17,7 @@ type Logger interface {
 	Error(msg ...any) error
 	Warning(msg ...any) error
 	Notice(msg ...any) error
-	Informational(msg ...any) error
+	Info(msg ...any) error
 	Debug(msg ...any) error
 }
 
@@ -337,10 +337,52 @@ func (log *Log) Notice(msg ...any) error {
 	return log.write(SeverityNotice, msg)
 }
 
-func (log *Log) Informational(msg ...any) error {
+func (log *Log) Info(msg ...any) error {
 	return log.write(SeverityInformational, msg)
 }
 
 func (log *Log) Debug(msg ...any) error {
 	return log.write(SeverityDebug, msg)
 }
+
+var std = func() Logger {
+	app := func() option.Option[AppName] {
+		exec, err := os.Executable()
+		if err != nil {
+			return option.None[AppName]()
+		}
+		return option.Some(AppName(exec))
+	}()
+
+	host := func() option.Option[HostName] {
+		hostname, err := os.Hostname()
+		if err != nil {
+			return option.None[HostName]()
+		}
+		return option.Some(HostName(hostname))
+	}()
+
+	pid := option.Some(ProcessID(strconv.Itoa(os.Getpid())))
+
+	return NewDefaultLogger(
+		app,
+		host,
+		pid,
+	)
+}()
+
+func Emergency(msg ...any) error { return std.Emergency(msg...) }
+
+func Alert(msg ...any) error { return std.Alert(msg...) }
+
+func Critical(msg ...any) error { return std.Critical(msg...) }
+
+func Error(msg ...any) error { return std.Error(msg...) }
+
+func Warning(msg ...any) error { return std.Warning(msg...) }
+
+func Notice(msg ...any) error { return std.Notice(msg...) }
+
+func Info(msg ...any) error { return std.Info(msg...) }
+
+func Debug(msg ...any) error { return std.Debug(msg...) }

@@ -735,6 +735,17 @@ func ExampleNewDefaultLogger() {
 	log.Error("hello, syslog!")
 	log.Warning("hello, syslog!")
 	log.Notice("hello, syslog!")
-	log.Informational("hello, syslog!")
+	log.Info("hello, syslog!")
 	log.Debug("hello, syslog!")
+}
+
+func ExampleLogger() {
+	Emergency("hello, syslog!")
+	Alert("hello, syslog!")
+	Critical("hello, syslog!")
+	Error("hello, syslog!")
+	Warning("hello, syslog!")
+	Notice("hello, syslog!")
+	Info("hello, syslog!")
+	Debug("hello, syslog!")
 }
