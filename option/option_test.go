@@ -1,6 +1,7 @@
 package option
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -150,6 +151,62 @@ func TestOption_MarshalJSON(t *testing.T) {
 	}
 }
 
+func TestOption_UnmarshalJSON(t *testing.T) {
+	type jsonStruct struct {
+		Name Option[string] `json:"name"`
+	}
+	type test struct {
+		name    string
+		data    []byte
+		want    jsonStruct
+		wantErr bool
+	}
+
+	do := func(tt *test) {
+		t.Run(tt.name, func(t *testing.T) {
+			got := jsonStruct{}
+			err := json.Unmarshal(tt.data, &got)
+			if tt.wantErr != (err != nil) {
+				t.Fatalf("want-error=%v, error=%v.", tt.wantErr, err)
+			}
+			if tt.want != got {
+				t.Fatalf("want=%v, got=%v", tt.want, got)
+			}
+		})
+	}
+
+	tests := []*test{
+		{
+			name: "Some",
+			data: []byte(`{"name":"json test!"}`),
+			want: jsonStruct{
+				Name: Some("json test!"),
+			},
+			wantErr: false,
+		},
+		{
+			name: "None",
+			data: []byte(`{"name":null}`),
+			want: jsonStruct{
+				Name: None[string](),
+			},
+			wantErr: false,
+		},
+		{
+			name: "failed unmarshal",
+			data: []byte(`{"name":1}`),
+			want: jsonStruct{
+				Name: None[string](),
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		do(tt)
+	}
+}
+
 func BenchmarkOptionSome_String(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = Some("benchmark test!").String()
@@ -171,5 +228,19 @@ func BenchmarkOptionSome_MarshalJSON(b *testing.B) {
 func BenchmarkOptionNone_MarshalJSON(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = None[string]().MarshalJSON()
+	}
+}
+
+func BenchmarkOptionSome_UnmarshalJSON(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var val Option[string]
+		_ = val.UnmarshalJSON([]byte(`"benchmark test!"`))
+	}
+}
+
+func BenchmarkOptionNone_UnmarshalJSON(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		var val Option[string]
+		_ = val.UnmarshalJSON([]byte(`null`))
 	}
 }

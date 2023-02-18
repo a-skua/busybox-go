@@ -1,6 +1,7 @@
 package option
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 )
@@ -23,7 +24,6 @@ func None[T any]() Option[T] {
 
 func (o Option[T]) String() string {
 	if o.Valid {
-		// return "Some("+ fmt.Sprint(o.Value)+")"
 		return fmt.Sprintf("Some(%v)", o.Value)
 	}
 
@@ -36,4 +36,19 @@ func (o Option[T]) MarshalJSON() ([]byte, error) {
 	}
 
 	return []byte("null"), nil
+}
+
+func (o *Option[T]) UnmarshalJSON(data []byte) error {
+	if bytes.Compare(data, []byte("null")) == 0 {
+		o.Valid = false
+		return nil
+	}
+
+	err := json.Unmarshal(data, &o.Value)
+	if err != nil {
+		return err
+	}
+
+	o.Valid = true
+	return nil
 }
