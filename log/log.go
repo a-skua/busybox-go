@@ -3,7 +3,7 @@ package log
 
 import (
 	"fmt"
-	"github.com/a-skua/busybox/option"
+	"github.com/a-skua/busybox-go/option"
 	"os"
 	"strconv"
 	"strings"

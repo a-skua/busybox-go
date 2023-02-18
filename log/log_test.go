@@ -1,7 +1,7 @@
 package log
 
 import (
-	"github.com/a-skua/busybox/option"
+	"github.com/a-skua/busybox-go/option"
 	"testing"
 	"time"
 )
