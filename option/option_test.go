@@ -149,3 +149,27 @@ func TestOption_MarshalJSON(t *testing.T) {
 		do(tt)
 	}
 }
+
+func BenchmarkOptionSome_String(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_ = Some("benchmark test!").String()
+	}
+}
+
+func BenchmarkOptionNone_String(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_ = None[string]().String()
+	}
+}
+
+func BenchmarkOptionSome_MarshalJSON(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = Some("benchmark test!").MarshalJSON()
+	}
+}
+
+func BenchmarkOptionNone_MarshalJSON(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, _ = None[string]().MarshalJSON()
+	}
+}

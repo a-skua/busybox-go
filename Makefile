@@ -1,10 +1,11 @@
 fmt:
-	cd option; go fmt ./...
-	cd log; go fmt ./...
+	cd option; make fmt
+	cd log; make fmt
 
 test:
-	cd option; go test ./... -cover
-	cd log; go test ./... -cover
+	cd option; make test
+	cd log; make test
 
 bench:
-	cd log; go test ./... -bench Message
+	cd option; make bench
+	cd log; make bench

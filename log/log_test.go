@@ -626,7 +626,7 @@ func TestMessage_String(t *testing.T) {
 
 func BenchmarkMessage_String(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		b.Log(NewMessage(
+		_ = NewMessage(
 			NewHeader(
 				NewPriority(FacilityUserLevelMessages, SeverityInformational),
 				1,
@@ -642,7 +642,7 @@ func BenchmarkMessage_String(b *testing.B) {
 			},
 			"Syslog!",
 			"Benchmark!",
-		))
+		).String()
 	}
 }
 

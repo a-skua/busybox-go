@@ -23,6 +23,7 @@ func None[T any]() Option[T] {
 
 func (o Option[T]) String() string {
 	if o.Valid {
+		// return "Some("+ fmt.Sprint(o.Value)+")"
 		return fmt.Sprintf("Some(%v)", o.Value)
 	}
 
