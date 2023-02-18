@@ -1,8 +1,10 @@
 fmt:
-	go fmt ./...
+	cd option; go fmt ./...
+	cd log; go fmt ./...
 
 test:
-	go test ./... -cover
+	cd option; go test ./... -cover
+	cd log; go test ./... -cover
 
 bench:
-	go test ./log -bench Message
+	cd log; go test ./... -bench Message
