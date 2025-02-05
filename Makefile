@@ -1,11 +1,11 @@
-fmt:
-	cd option; make fmt
-	cd log; make fmt
-
+.PHONY: test
 test:
-	cd option; make test
-	cd log; make test
+	./make.sh $@
 
+.PHONY: fmt
+fmt:
+	./make.sh $@
+
+.PHONY: bench
 bench:
-	cd option; make bench
-	cd log; make bench
+	./make.sh $@
